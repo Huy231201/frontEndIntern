@@ -1,19 +1,33 @@
-
+import React, { useState } from "react";
 import { Typography, Input, Button } from "antd";
-
+import { useAuth } from "../context/authContext";
 
 const { Title, Text } = Typography;
 
 function Login() {
+    const [account, setAccount] = useState("");
+    const [password, setPassword] = useState("");
+
+    const { login } = useAuth();
+    const handleLogin = async () => {
+        try {
+            await login(account, password);
+        } catch (err) {
+            alert("Sai tài khoản hoặc mật khẩu");
+            throw err
+        }
+    };
+
     const styles = {
         container: {
             display: "flex",
-            width: "100vw",
-            height: "100vh",
+            width: "100vw", // Dùng 100% thay cho 100vw
+            minHeight: "100vh", // Đảm bảo chiều cao tối thiểu 100% viewport
             margin: "0 auto",
+            overflowY: "auto" as const,
         },
 
-        // --- LEFT SIDE ---
+        // --- LEFT SIDE --- (Ít thay đổi do mục đích chính là nền/banner)
         left: {
             flex: "0.621",
             backgroundImage: `url("/src/assets/Rectangle 2.png")`,
@@ -24,87 +38,82 @@ function Login() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            paddingTop: "21.34vh",
-            paddingBottom: "18.79vh"
+            // Sử dụng rem/padding thay cho vh để nội dung không bị 'phồng' quá nhiều
+            paddingTop: "4rem", 
+            paddingBottom: "3rem",
         },
 
         content: {
-            //   marginTop: "218.46px",
-            //   marginBottom: "192.54px",
             display: "flex",
             flexDirection: "column" as const,
             alignItems: "center",
             textAlign: "center" as const,
-            height: "59.86vh",
-            justifyContent: "space-between"
+            // LOẠI BỎ height cố định (59.86vh) để linh hoạt hơn
+            justifyContent: "space-between",
+            gap: "3rem", // Dùng rem
+            width: "100%"
         },
-
 
         logoWrapper: {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            height: "105px",
-            gap: "12px",
+            height: "6.56rem", // 105px -> 6.56rem (giả sử base font 16px)
+            gap: "0.75rem", // 12px -> 0.75rem
         },
         titleGroup: {
             display: "flex",
             flexDirection: "column" as const,
             alignItems: "center",
-            gap: "32px",
-            width: "488px",
-            height: "199px",
+            gap: "2rem", // 32px -> 2rem
+            maxWidth: "488px", // Giới hạn width bằng px
         },
         tag: {
             backgroundColor: "#fff",
             color: "rgba(32, 52, 211, 1)",
-            borderRadius: "24px",
-            padding: "12px 32px",
+            borderRadius: "1.5rem", // 24px -> 1.5rem
+            padding: "0.75rem 2rem", // 12px 32px -> rem
             fontWeight: 800,
             display: "inline-block",
-            height: "53px",
-            fontSize: "24px",
+            height: "3.3rem", // 53px -> 3.3rem
+            fontSize: "1.5rem", // 24px -> 1.5rem
         },
         subtitleWrapper: {
-            width: "488px",
-            height: "114px",
+            width: "100%",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
         },
         subtitle: {
-            fontSize: "46px",
+            fontSize: "2.875rem", // 46px -> 2.875rem (cho phép co giãn)
             fontWeight: 650,
             lineHeight: "1.4",
             margin: 0,
             color: "rgba(255, 255, 255, 1)",
         },
         footerWrapper: {
-            width: "399px",
-            height: "33px",
+            width: "100%",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
         },
         footer: {
-            fontSize: "26px",
+            fontSize: "1.625rem", // 26px -> 1.625rem
             fontWeight: 400,
             color: "rgba(255, 255, 255, 1)",
         },
 
         // --- RIGHT SIDE ---
-
         right: {
             flex: "0.379",
             backgroundColor: "#fff",
             display: "flex",
             flexDirection: "column" as const,
-            alignItems: "center",
+            alignItems: "center", // Căn giữa theo chiều ngang
             justifyContent: "center",
-            paddingTop: "3.28vh",
+            // Dùng padding cố định (px) nhưng chỉ để cân bằng, nội dung sẽ được giới hạn bằng maxWidth
+            padding: "3rem", 
             position: "relative" as const,
-
-            padding: "0 16px"
         },
 
         formContainer: {
@@ -112,86 +121,88 @@ function Login() {
             flexDirection: "column" as const,
             alignItems: "center",
             justifyContent: "center",
-            width: "450px",
-            maxWidth: "100%",
-            height: "19.14vh"
+            // LOẠI BỎ width cố định bằng vw và height cố định bằng vh
+            width: "100%", 
+            maxWidth: "100%", // Giới hạn kích thước tối đa của form
+            height: "auto", 
         },
 
-        // Header cách top 364px
         loginHeader: {
-            marginLeft: "48px",
-            marginRight: "48px",
-            marginBottom: "32px",
+            // Giữ margin bằng rem
+            marginBottom: "2rem", // 32px -> 2rem
             textAlign: "center" as const,
             width: "100%",
         },
         loginTitle: {
-            fontSize: "36px",
+            fontSize: "2.25rem", // 36px -> 2.25rem
             fontWeight: 600,
-            marginBottom: "18px",
+            marginBottom: "1.125rem", // 18px -> 1.125rem
             color: "rgba(75, 75, 75, 1)",
         },
         loginSubtitle: {
-            fontSize: "24px",
+            fontSize: "1.5rem", // 24px -> 1.5rem
             color: "rgba(75, 75, 75, 1)",
             fontWeight: 400,
         },
 
         // Form chính
         formWrapper: {
-            display: "flex",
-            flexDirection: "column" as const,
-            width: "31.25vw",
-            gap: "16px"
+            width: "100%", // Dùng 100% thay cho vw
+            display: "flex", 
+            flexDirection: "column" as const, 
+            gap: "1.75rem", // Dùng rem thay cho vw
         },
         input: {
-            height: "50px",
-            borderRadius: "8px",
-            fontSize: "16px",
-            padding: "13px 12px",
-            fontWeight: "400px",
-            color: "rgba(148, 163, 184, 1)"
+            height: "3.125rem", // 50px -> 3.125rem
+            borderRadius: "0.5rem", // 8px -> 0.5rem
+            fontSize: "1rem", // 16px -> 1rem
+            padding: "0.8125rem 0.75rem", // 13px 12px -> rem
+            fontWeight: "400",
+            color: "rgba(148, 163, 184, 1)",
+            width: "100%",
         },
 
         // Nhóm hai nút bên dưới
         buttonGroup: {
+            width: "100%",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginTop: "16px",
-            gap: "18px"
+            marginTop: "1rem", // 16px -> 1rem
+            gap: "1.125rem", // Khoảng 14px (thay cho 1.4vw)
         },
         forgotPassword: {
-            width: "16vw",
-            height: "50px",
-            borderRadius: "8px",
+            flex: 1,
+            height: "3.125rem", // 50px -> 3.125rem
+            borderRadius: "0.5rem", // 8px -> 0.5rem
             border: "1px solid #E1E1E1",
             backgroundColor: "#fff",
             color: "rgba(75, 75, 75, 1)",
-            fontSize: "16px",
+            fontSize: "1rem", // 16px -> 1rem
             fontWeight: 600,
-            padding: "13px 50px",
+            padding: "0.8125rem 1rem", // Căn chỉnh padding linh hoạt
         },
         button: {
-            width: "16vw",
-            height: "50px",
+            flex: 1,
+            height: "3.125rem", // 50px -> 3.125rem
             backgroundColor: "#FFC62B",
             border: "none",
-            borderRadius: "8px",
+            borderRadius: "0.5rem", // 8px -> 0.5rem
             fontWeight: 600,
-            fontSize: "16px",
+            fontSize: "1rem", // 16px -> 1rem
             color: "#000",
-            padding: "13px 50px"
+            padding: "0.8125rem 1rem", // Căn chỉnh padding linh hoạt
         },
     };
 
     return (
+        <>
         <div style={styles.container}>
             {/* --- LEFT --- */}
             <div style={styles.left}>
                 <div style={styles.content}>
                     <div style={styles.logoWrapper}>
-                        <img src="/src/assets/HDBank.png" alt="HDBank" />
+                        <img style={{width: "19rem", height:""}} src="/src/assets/HDBank.png" alt="HDBank" />
                         <img src="/src/assets/X.png" alt="X" />
                         <img src="/src/assets/Group 11.png" alt="GoTrust" />
                     </div>
@@ -212,7 +223,7 @@ function Login() {
             </div>
 
             {/* --- RIGHT --- */}
-            <div style={styles.right}>
+            <div style={styles.right} className="right">
                 <div style={styles.formContainer}>
                     <div style={styles.loginHeader}>
                         <Title level={3} style={styles.loginTitle}>
@@ -222,12 +233,22 @@ function Login() {
                     </div>
 
                     <div style={styles.formWrapper}>
-                        <Input placeholder="Email công ty" style={styles.input} />
-                        <Input.Password placeholder="Mật khẩu" style={styles.input} />
+                        <Input
+                            placeholder="Email công ty"
+                            style={styles.input}
+                            value={account}
+                            onChange={(e) => setAccount(e.target.value)}
+                        />
+                        <Input.Password
+                            placeholder="Mật khẩu"
+                            style={styles.input}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
 
                         <div style={styles.buttonGroup}>
                             <Button style={styles.forgotPassword}>Quên mật khẩu?</Button>
-                            <Button type="primary" style={styles.button}>
+                            <Button onClick={handleLogin} type="primary" style={styles.button}>
                                 Đăng nhập
                             </Button>
                         </div>
@@ -235,242 +256,21 @@ function Login() {
                 </div>
             </div>
         </div>
+
+        <style>
+            {
+                `
+                // html {
+                // font-size: calc((1.1111vw + 1.5625vh) / 2);
+                // }
+                `
+            }
+        </style>
+        </>
     );
 }
 
 export default Login;
 
-// import { Typography, Input, Button } from "antd";
-
-// const { Title, Text } = Typography;
-
-// function Login() {
-//     const styles = {
-//         container: {
-//             display: "flex",
-//             width: "100vw",
-//             height: "100vh",
-//             margin: "0 auto",
-//         },
-
-//         // --- LEFT SIDE ---
-//         left: {
-//             flex: "0.621",
-//             backgroundImage: `url("/src/assets/Rectangle 2.png")`,
-//             backgroundSize: "cover",
-//             backgroundPosition: "center",
-//             position: "relative" as const,
-//             color: "#fff",
-//             display: "flex",
-//             justifyContent: "center",
-//             alignItems: "center",
-//             paddingTop: "21.34vh",
-//             paddingBottom: "18.79vh"
-//         },
-
-//         content: {
-//             //   marginTop: "218.46px",
-//             //   marginBottom: "192.54px",
-//             display: "flex",
-//             flexDirection: "column" as const,
-//             alignItems: "center",
-//             textAlign: "center" as const,
-//             height: "59.86vh",
-//             justifyContent: "space-between"
-//         },
-
-
-//         logoWrapper: {
-//             display: "flex",
-//             alignItems: "center",
-//             justifyContent: "center",
-//             height: "105px",
-//             gap: "12px",
-//         },
-//         titleGroup: {
-//             display: "flex",
-//             flexDirection: "column" as const,
-//             alignItems: "center",
-//             gap: "32px",
-//             width: "488px",
-//             height: "199px",
-//         },
-//         tag: {
-//             backgroundColor: "#fff",
-//             color: "rgba(32, 52, 211, 1)",
-//             borderRadius: "24px",
-//             padding: "12px 32px",
-//             fontWeight: 800,
-//             display: "inline-block",
-//             height: "53px",
-//             fontSize: "24px",
-//       },
-//         subtitleWrapper: {
-//             width: "488px",
-//             height: "114px",
-//             display: "flex",
-//             justifyContent: "center",
-//             alignItems: "center",
-//         },
-//         subtitle: {
-//             fontSize: "46px",
-//             fontWeight: 650,
-//             lineHeight: "1.4",
-//             margin: 0,
-//             color: "rgba(255, 255, 255, 1)",
-//         },
-//         footerWrapper: {
-//             width: "399px",
-//             height: "33px",
-//             display: "flex",
-//             justifyContent: "center",
-//             alignItems: "center",
-//         },
-//         footer: {
-//             fontSize: "26px",
-//             fontWeight: 400,
-//             color: "rgba(255, 255, 255, 1)",
-//         },
-
-//         // --- RIGHT SIDE ---
-
-//         right: {
-//             flex: "0.379",
-//             backgroundColor: "#fff",
-//             display: "flex",
-//             flexDirection: "column" as const,
-//             alignItems: "center",
-//             justifyContent: "center",
-//             paddingTop: "3.28vh",
-//             position: "relative" as const
-//         },
-
-//         // **ĐÃ XÓA `formContainer` KHỎI ĐÂY**
-
-//         // Header cách top 364px
-//         loginHeader: {
-//             marginLeft: "48px",
-//             marginRight: "48px",
-//             marginBottom: "32px",
-//             textAlign: "center" as const,
-//             width: "450px",
-//         },
-//         loginTitle: {
-//             fontSize: "36px",
-//             fontWeight: 600,
-//             marginBottom: "18px",
-//             color: "rgba(75, 75, 75, 1)",
-//         },
-//         loginSubtitle: {
-//             fontSize: "24px",
-//             color: "rgba(75, 75, 75, 1)",
-//             fontWeight: 400,
-//         },
-
-//         // Form chính
-//         formWrapper: {
-//             display: "flex",
-//             flexDirection: "column" as const,
-//             width: "450px",
-//             gap: "16px"
-//         },
-//         input: {
-//             height: "50px",
-//             borderRadius: "8px",
-//             fontSize: "16px",
-//             padding: "13px 12px",
-//             fontWeight: "400px",
-//             color: "rgba(148, 163, 184, 1)"
-//         },
-
-//         // Nhóm hai nút bên dưới
-//         buttonGroup: {
-//             display: "flex",
-//             justifyContent: "space-between",
-//             alignItems: "center",
-//             marginTop: "16px",
-//         },
-//         forgotPassword: {
-//             width: "216px",
-//             height: "50px",
-//             borderRadius: "8px",
-//             border: "1px solid #E1E1E1",
-//             backgroundColor: "#fff",
-//             color: "rgba(75, 75, 75, 1)",
-//             fontSize: "16px",
-//             fontWeight: 600,
-//             padding: "13px 50px"
-//         },
-//         button: {
-//             width: "216px",
-//             height: "50px",
-//             backgroundColor: "#FFC62B",
-//             border: "none",
-//             borderRadius: "8px",
-//             fontWeight: 600,
-//             fontSize: "16px",
-//             color: "#000",
-//             padding: "13px 50px"
-//         },
-//     };
-
-//     return (
-//         <div style={styles.container}>
-//             {/* --- LEFT --- */}
-//             <div style={styles.left}>
-//                 <div style={styles.content}>
-//                     <div style={styles.logoWrapper}>
-//                         <img src="/src/assets/HDBank.png" alt="HDBank" />
-//                         <img src="/src/assets/X.png" alt="X" />
-//                         <img src="/src/assets/Group 11.png" alt="GoTrust" />
-//                     </div>
-
-//                     <div style={styles.titleGroup}>
-//                         <div style={styles.tag}>HỆ THỐNG</div>
-//                         <div style={styles.subtitleWrapper}>
-//                             <Title level={2} style={styles.subtitle}>
-//                                 THỐNG KÊ GIAO DỊCH TẠI TRƯỜNG HỌC
-//                             </Title>
-//                      </div>
-//                     </div>
-
-//                     <div style={styles.footerWrapper}>
-//                         <Text style={styles.footer}>Xây dựng bởi HDBank × GoTRUST</Text>
-//                 _   </div>
-//                 </div>
-//             </div>
-
-//             {/* --- RIGHT --- */}
-//             <div style={styles.right}>
-//                 
-//                 {/* **ĐÃ XÓA `div formContainer` BỌC BÊN NGOÀI** */}
-
-//                 <div style={styles.loginHeader}>
-//                     <Title level={3} style={styles.loginTitle}>
-//                         Chào mừng trở lại
-//                     </Title>
-//                     <Text style={styles.loginSubtitle}>Đăng nhập ngay để tiếp tục</Text>
-//                 </div>
-
-//                 <div style={styles.formWrapper}>
-//                     
-//                     {/* **ĐÃ SỬA PLACEHOLDER** */}
-//                     <Input placeholder="Email đăng nhập" style={styles.input} />
-//                     <Input.Password placeholder="Mật khẩu" style={styles.input} />
-
-//                     <div style={styles.buttonGroup}>
-//                         <Button style={styles.forgotPassword}>Quên mật khẩu?</Button>
-//                         <Button type="primary" style={styles.button}>
-//                             Đăng nhập
-//                         </Button>
-//                     </div>
-//                 </div>
-//             
-//             </div>
-//         </div>
-//     );
-// }
-
-// export default Login;
 
 

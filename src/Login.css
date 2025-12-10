@@ -1,0 +1,20 @@
+/* Khi màn hình >= 1600px, left thu nhỏ */
+@media (min-width: 1600px) {
+  .left {
+    flex: 0.3;
+  }
+  .right {
+    flex: 0.7;
+  }
+}
+
+/* Khi màn hình >= 1900px, ẩn hoàn toàn bên trái */
+@media (min-width: 1900px) {
+  .left {
+    display: none; /* ✅ Ẩn hoàn toàn khỏi layout */
+  }
+
+  .right {
+    flex: 1; /* ✅ Chiếm toàn bộ không gian */
+  }
+}
