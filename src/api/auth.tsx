@@ -3,7 +3,6 @@ import axios from "axios";
 const APILOGIN_URL = "https://api-dev.gotrust.vn/edupay/v1/accounts/login";
 
 export const loginApi = async (account: string, password: string) => {
-    try {
         const response = await axios.post(APILOGIN_URL, 
             {account, password},
             {
@@ -16,9 +15,6 @@ export const loginApi = async (account: string, password: string) => {
         );
 
         return response.data;
-    } catch (error) {
-        throw error;
-    }
 }
 
 

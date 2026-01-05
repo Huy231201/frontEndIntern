@@ -5,6 +5,10 @@ import { useGrade } from "../context/GradeContext";
 import { useSchoolYear } from "../context/SchoolYearContext";
 import { useClass} from "../context/ClassContext";
 import { useStudent } from "../context/StudentContext";
+import {getTeacherApi} from "../api/teacherApi";
+import {createClassApi, deleteClassApi, updateClassApi} from "../api/classApi";
+
+
 const { Title, Text } = Typography;
 type ContextType = { setPageTitle: (title: string) => void };
 
@@ -14,104 +18,119 @@ function ClassManagement() {
 
     const { setPageTitle } = useOutletContext<ContextType>();
 
+    useEffect(() => {
+        setPageTitle("Quản lý lớp học");
+    }, [setPageTitle]);
+
+
     
     const teacherSelect = useRef<any>(null);
 
     const { grade } = useGrade();
-    const { schoolYears } = useSchoolYear();
+    const { schoolYear } = useSchoolYear();
     const { classes, setClasses} = useClass();
-    const { students } = useStudent();
+    // const { students } = useStudent();
 
     // Hàm đếm học sinh theo lớp
-    const countStudentsByClasses = (classID: number | null) => {
-        if (classID === null) return 0;
-        return students.filter(student => student.classID === classID).length;
-    }
+    // const countStudentsByClasses = (classID: number | null) => {
+    //     if (classID === null) return 0;
+    //     return students.filter(student => student.classID === classID).length;
+    // }
 
     // Set hiệu ứng cho lựa chọn niên khóa và khối khi click
-    const [activeGrade, setActiveGrade] = useState<number | null>(null);
-    const [activeYear, setActiveYear] = useState<number | null>(null);
+    const [activeGrade, setActiveGrade] = useState<string | null>(null);
+    const [activeYear, setActiveYear] = useState<string | null>(null);
 
+    const [teacher, setTeacher] = useState<{id: string, fullName: string}[]>([]);
 
     const [newClassName, setNewClassName] = useState("");
-    const [newGradeID, setNewGradeID] = useState<number | null>(null);
-    const [newYearID, setNewYearID] = useState<number | null>(null);
-    const [newTeacherID, setNewTeacherID] = useState<number | null>(null);
+    const [newGradeID, setNewGradeID] = useState<string | null>(null);
+    const [newYear, setNewYear] = useState<string | null>(null);
+    const [newTeacherID, setNewTeacherID] = useState<string | null>(null);
 
     const [editClassName, setEditClassName] = useState("");
-    const [editGradeID, setEditGradeID] = useState<number | null>(null);
-    const [editYearID, setEditYearID] = useState<number | null>(null);
-    const [editTeacherID, setEditTeacherID] = useState<number | null>(null);
+    const [editGradeID, setEditGradeID] = useState<string | null>(null);
+    const [editYear, setEditYear] = useState<string | null>(null);
+    const [editTeacherID, setEditTeacherID] = useState<string | null>(null);
 
 
     // item được chọn 
     const [selectedClass, setSelectedClass] = useState<any>(null);
 
     // state khi hover grade và hover niên khóa
-    const [hoverGrade, setHoverGrade] = useState<number | null>(null);
-    const [hoverYear, setHoverYear] = useState<number | null>(null);
+    const [hoverGrade, setHoverGrade] = useState<string | null>(null);
+    const [hoverYear, setHoverYear] = useState<string | null>(null);
 
     // state khi hover Card
     const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
 
+    // hàm tạo lớp
+    const handleAddClass = async () => {
+        if(!newClassName || !newGradeID || !newYear || !newTeacherID) return;
+        const generatedCode = `CLIENT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        try {
+            const response = await createClassApi(generatedCode, newClassName, newYear, newTeacherID, newGradeID);
+
+            setClasses(prev => [...prev, response.data]);
+            
+            setNewClassName("");
+            setNewYear("");
+            setNewTeacherID("");
+            setNewGradeID("");
+            setIsAddModalOpen(false);
+            
+        } catch (err) {
+            console.log("Lỗi tạo lớp", err);
+        }
+    }
+
+    const handleDeleteClass = async () => {
+        if(!selectedClass) return;
+
+        try {
+            await deleteClassApi(selectedClass.id);
+
+            setClasses(prev => prev.filter(cls => cls.id !== selectedClass.id));
+
+            setSelectedClass(null);
+            setIsDeleteModalOpen(false);
+            setConfirmText("");
+        } catch(err) {
+            console.log("Lỗi xóa lớp", err);
+        }
+    }
 
 
-
-    // hàm thêm lớp
-    const handleAddClass =  () => {
-        if(!newClassName || !newGradeID || !newYearID || !newTeacherID ) return;
-
-        setClasses((prev) => {
-            const newClass = {
-                id: prev.length? prev[prev.length - 1].id + 1: 1,
-                name: newClassName,
-                gradeID: newGradeID,
-                schoolYearID: newYearID,
-                teacherID: newTeacherID ?? null
-            };
-            return [...prev, newClass];
-        });
-
-        // reset form
-        setNewClassName("");
-        setNewGradeID(null);
-        setNewYearID(null);
-        setNewTeacherID(null);
-
-        setIsAddModalOpen(false);
-    };
 
 
     // hàm chỉnh sửa lớp
-    const handleUpdateClass = () => {
-    if (!selectedClass) return;
+    const handleUpdateClass = async () => {
+        if(!selectedClass || !editClassName || !editYear || !editTeacherID || !editGradeID) return;
 
-    setClasses(prev =>
-        prev.map(cls =>
-            cls.id === selectedClass.id
-                ? {
-                    ...cls,
-                    name: editClassName,
-                    gradeID: editGradeID,
-                    schoolYearID: editYearID,
-                    teacherID: editTeacherID
-                }
-                : cls
-        )
-    );
+        try {
+            const response = await updateClassApi(
+                selectedClass.id,
+                selectedClass.code,
+                editClassName,
+                editYear,
+                editTeacherID,
+                editGradeID
+            );
 
-    setIsUpdateModalOpen(false);
-};
+            setClasses(prev =>
+                prev.map((cls) => 
+                    cls.id === selectedClass.id? response.data : cls
+                )
+            );
 
-    // hàm xóa lớp
-    const handleDeleteClass = () => {
-        if (!selectedClass) return;
+            setIsUpdateModalOpen(false);
 
-        setClasses(prev => prev.filter(cls => cls.id !== selectedClass.id));
-        setIsDeleteModalOpen(false);
-        setConfirmText("");
-    };
+        } catch (err) {
+            throw err
+        }
+    }
 
     // hàm chuyển trang khi click danh sách học sinh
     const navigate = useNavigate();
@@ -123,17 +142,12 @@ function ClassManagement() {
     
 
 
-    // hàm hiển thị lọc Card lớp theo niên khóa và khối
-    
+    // Biến lọc lớp theo Khối và Niên khóa
     const filteredClasses = classes.filter((cls) => {
-        
-        const matchGrade = activeGrade === null ? true : cls.gradeID === activeGrade;
-
-        const matchYear = activeYear === null ? true : activeYear === -1 ? true: cls.schoolYearID === activeYear;
-
+        const matchGrade = activeGrade ? cls.gradeId === activeGrade : true;
+        const matchYear = activeYear? cls.schoolYear === activeYear: true;
         return matchGrade && matchYear;
-    });
-    
+    })
     
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -141,17 +155,23 @@ function ClassManagement() {
     const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
     const [confirmText, setConfirmText] = useState("");
 
-    // Danh sách giáo viên chủ nhiệm
-    const teachers = [
-        { id: 1, name: "Hoàng Anh" },
-        { id: 2, name: "Lan Anh"}
-    ]
-
+    
+    const fetchTeachers = async () => {
+        try {
+            const response = await getTeacherApi();
+            const teacherList = response.data
+            setTeacher(teacherList);
+        } catch(err) {
+            throw err
+        }
+    }
 
     useEffect(() => {
-        setPageTitle("Quản lý lớp học");
-    }, [setPageTitle]);
+        fetchTeachers();
+    }, []);
 
+
+    
     const styles = {
         classHeader: {
             width: "100%",
@@ -320,16 +340,19 @@ function ClassManagement() {
                                 onMouseEnter={() => setHoverGrade(grade.id)}
                                 onMouseLeave={() => setHoverGrade(null)} 
                                 style={{
+                                    textAlign: "center",
                                     cursor: "pointer",
                                     position: "relative",
                                     height: "100%",
                                     display: "flex",
-                                    alignItems: "center"
+                                    alignItems: "center",
+                                    minWidth: "54px"
                                 }}
                                 onClick={() => setActiveGrade(activeGrade === grade.id ? null : grade.id)}
                             >
                                 <Text
                                     style={{
+                                        width: "100%",
                                         fontSize: "16px",
                                         fontWeight: 400,
                                         color: activeGrade === grade.id || hoverGrade === grade.id? "#008AFF" : "#94A3B8",
@@ -374,19 +397,14 @@ function ClassManagement() {
 
                             {/*Hiển thị niên khóa để hiển thị các lớp thuộc 1 niên khóa cố định*/}
 
-                            {/*Sort theo thứ tự giảm dần*/}
-                            {[...schoolYears]
-                                .sort((a, b) => {
-                                    const startA = Number(a.year.split(" - ")[0]);
-                                    const startB = Number(b.year.split(" - ")[0]);
-                                    return startB - startA
-                                })
-                                .map((year) => (
+                           
+                            {
+                                schoolYear.map((year) => (
                                     <div
-                                        key={year.id}
-                                        onClick={() => setActiveYear(year.id)}
-                                        onMouseEnter={() => setHoverYear(year.id)}
-                                        onMouseLeave={() => setHoverYear(null)}
+                                        key={year}
+                                        onClick={() => setActiveYear(year)}
+                                        onMouseEnter={() => setHoverYear(year)}
+                                        onMouseLeave={() => setHoverYear(year)}
                                         style={{
                                             cursor: "pointer",
                                             height: "36px",
@@ -400,16 +418,16 @@ function ClassManagement() {
                                             width: "100%",
                                             height: "100%",
                                             borderRadius: "8px",
-                                            backgroundColor: activeYear === year.id || hoverYear === year.id ? "#f2f9ff" : "#FFFFFF",
+                                            backgroundColor: activeYear === year || hoverYear === year ? "#f2f9ff" : "#FFFFFF",
                                         }}>
                                             <Text
                                                 style={{
                                                     fontWeight: 400,
                                                     fontSize: "14px",
-                                                    color: activeYear === year.id || hoverYear === year.id ? "#008AFF" : "#334155"
+                                                    color: activeYear === year || hoverYear === year ? "#008AFF" : "#334155"
                                                 }}
                                             >
-                                                {year.year.replaceAll(' ', '')}
+                                                {year.replaceAll(' ', '')}
                                             </Text>
                                         </div>
                                     </div>
@@ -419,8 +437,8 @@ function ClassManagement() {
 
                             {/* Nút tất cả để hiển thị tất cả các lớp  */}
                             <div
-                                onClick={() => setActiveYear(-1)}
-                                onMouseEnter={() => setHoverYear(-1)}
+                                onClick={() => setActiveYear(null)}
+                                onMouseEnter={() => setHoverYear(null)}
                                 onMouseLeave={() => setHoverYear(null)}
                                 style={{
                                     cursor: "pointer",
@@ -435,12 +453,12 @@ function ClassManagement() {
                                         width: "100%",
                                         height: "100%",
                                         borderRadius: "8px",
-                                        backgroundColor: activeYear === -1 || hoverYear === -1 ? "#f2f9ff" : "#FFFFFF",
+                                        backgroundColor: activeYear === null || hoverYear === null ? "#f2f9ff" : "#FFFFFF",
                                     }}>
                                     <Text style={{
                                         fontWeight: 400,
                                         fontSize: "14px",
-                                        color: activeYear === -1 || hoverYear === -1? "#008AFF" : "#334155"
+                                        color: activeYear === null || hoverYear === null ? "#008AFF" : "#334155"
                                     }}>Tất cả</Text>
                                 </div>
                             </div>
@@ -484,23 +502,22 @@ function ClassManagement() {
                                         <Title style={{margin: 0, fontWeight: 700, fontSize: "16px"}}> Lớp {cls.name}</Title>
                                         <Text style={{margin: 0, fontWeight: 300, fontSize: "16px" }}>
                                             (
-                                                {
-                                                    schoolYears.find((y) => y.id === cls.schoolYearID)?.year
-                                                }
+                                                {cls.schoolYear.replace('-', ' - ')}
                                             )
                                         </Text>
                                         </div>
 
                                         <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
                                             <img src="/src/assets/user.png" style={{width: "20px", height: "20px", objectFit: "contain"}} />
-                                            <Text style={{fontWeight: 500, fontSize: "14px", color: "#94A3B8"}}>{countStudentsByClasses(cls.id)} học sinh</Text>
+                                            <Text style={{fontWeight: 500, fontSize: "14px", color: "#94A3B8"}}>
+                                                {cls.studentCount} học sinh</Text>
                                         </div>
 
                                         <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
                                             <img src="/src/assets/Property 33.png" style={{width: "20px", height: "20px", objectFit: "contain"}} />
                                             <Text style={{fontWeight: 500, fontSize: "14px", color: "#94A3B8"}}>
                                                 {
-                                                    teachers.find((t) => t.id === cls.teacherID)?.name
+                                                    teacher.find(teacher => teacher.id === cls.homeroomTeacherId)?.fullName
                                                 } (GVCN)</Text>
                                         </div>
                                     </div>
@@ -519,9 +536,9 @@ function ClassManagement() {
 
                                             // fill dữ liệu lên form sửa
                                             setEditClassName(cls.name);
-                                            setEditGradeID(cls.gradeID);
-                                            setEditYearID(cls.schoolYearID);
-                                            setEditTeacherID(cls.teacherID);
+                                            setEditGradeID(cls.gradeId);
+                                            setEditYear(cls.schoolYear);
+                                            setEditTeacherID(cls.homeroomTeacherId);
 
                                             setIsUpdateModalOpen(true);
                                         }}
@@ -655,16 +672,16 @@ function ClassManagement() {
 
                             <Select
                                 placeholder="Niên khóa"
-                                value={newYearID}
-                                onChange={(v) => setNewYearID(v)}
+                                value={newYear}
+                                onChange={(v) => setNewYear(v)}
                                 suffixIcon={
                                     <img src="/src/assets/Down (2).png"
                                     />
                                 }
                                 options={
-                                    schoolYears.map((y) => ({
-                                        label: y.year,
-                                        value: y.id
+                                    schoolYear.map((year) => ({
+                                        label: year,
+                                        value: year
                                     }))
                                 }
                             />
@@ -692,9 +709,9 @@ function ClassManagement() {
                                 }}
                                 />
                             }
-                            options={teachers.map((t) => ({
-                                label: t.name,
-                                value: t.id
+                            options={teacher.map((teacher) => ({
+                                label: teacher.fullName,
+                                value: teacher.id
                             }))}
                             optionFilterProp="label"
                             />
@@ -844,16 +861,16 @@ function ClassManagement() {
 
                             <Select
                                 placeholder="Niên khóa"
-                                value={editYearID}
-                                onChange={(v) => setEditYearID(v)}
+                                value={editYear}
+                                onChange={(v) => setEditYear(v)}
                                 suffixIcon={
                                     <img src="/src/assets/Down (2).png"
                                     />
                                 }
                                 options={
-                                    schoolYears.map((y) => ({
-                                        label: y.year,
-                                        value: y.id
+                                    schoolYear.map((year) => ({
+                                        label: year,
+                                        value: year
                                     }))
                                 }
                             />
@@ -875,9 +892,9 @@ function ClassManagement() {
                                 <img src="/src/assets/search.png"
                                 />
                             }
-                            options={teachers.map((t) => ({
-                                label: t.name,
-                                value: t.id
+                            options={teacher.map((teacher) => ({
+                                label: teacher.fullName,
+                                value: teacher.id
                             }))}
                             optionFilterProp="label"
                             />
@@ -897,7 +914,7 @@ function ClassManagement() {
                     }}
                 >
                     <Button
-                    onClick={handleUpdateClass}
+                        onClick={handleUpdateClass}
                         style={{
                             width: "100%",
                             borderRadius: "8px",

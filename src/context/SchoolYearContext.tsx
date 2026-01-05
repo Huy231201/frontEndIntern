@@ -1,38 +1,53 @@
-import {createContext, useContext, useState, useEffect} from "react"
-
-export interface SchoolYear {
-    id: number,
-    year: string;
-}
+import { createContext, useContext, useState, useEffect } from "react";
+import { getSchoolYearApi } from "../api/schoolYearApi";
+import {useAuth} from "../context/authContext"
 
 interface SchoolYearContextType {
-    schoolYears: SchoolYear[];
-   setSchoolYears: React.Dispatch<React.SetStateAction<SchoolYear[]>>;
+  schoolYear: string[];
+  setSchoolYear: React.Dispatch<React.SetStateAction<string[]>>;
+  fetchSchoolYear: () => Promise<void>;
 }
 
-const SchoolYearContext = createContext<SchoolYearContextType | null>(null);
+export const SchoolYearContext = createContext<SchoolYearContextType | null>(null);
 
 export function SchoolYearProvider({ children }: { children: React.ReactNode }) {
-  
-  // Load từ localStorage khi khởi tạo
-  const [schoolYears, setSchoolYears] = useState<SchoolYear[]>(() => {
-    const saved = localStorage.getItem("schoolYears");
-    return saved
-      ? JSON.parse(saved)
-      : [
-          { id: 1, year: "2023 - 2024"},
-          { id: 2, year: "2024 - 2025"},
-          { id: 3, year: "2025 - 2026"}
-        ];
-  });
 
-  // Lưu vào localStorage mỗi khi có thay đổi
+  // State lưu danh sách niên khóa
+  const [schoolYear, setSchoolYear] = useState<string[]>([]);
+  
+  const {token} = useAuth();
+
+  // Hàm gọi API lấy niên khóa
+  const fetchSchoolYear = async () => {
+    try {
+      const response = await getSchoolYearApi();
+
+      // API trả về mảng string
+      const yearList = response.data;
+
+      console.log("Dữ liệu niên khóa: ", yearList);
+
+      setSchoolYear(yearList);
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Gọi API khi mở website
   useEffect(() => {
-    localStorage.setItem("schoolYears", JSON.stringify(schoolYears));
-  }, [schoolYears]);
+    if (token) {
+    fetchSchoolYear();
+    }
+  }, [token]);
+
+  // Sync vào localStorage
+  useEffect(() => {
+    localStorage.setItem("schoolYear", JSON.stringify(schoolYear));
+  }, [schoolYear]);
 
   return (
-    <SchoolYearContext.Provider value={{ schoolYears, setSchoolYears }}>
+    <SchoolYearContext.Provider value={{ schoolYear, setSchoolYear, fetchSchoolYear }}>
       {children}
     </SchoolYearContext.Provider>
   );
@@ -42,4 +57,4 @@ export function useSchoolYear() {
   const ctx = useContext(SchoolYearContext);
   if (!ctx) throw new Error("useSchoolYear must be used inside <SchoolYearProvider>");
   return ctx;
-} 
+}

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { getGradeApi } from "../api/gradeApi";
+import {useAuth} from "../context/authContext";
 
 export interface GradeLevel {
   id: string;
@@ -19,8 +20,8 @@ export const GradeContext = createContext<GradeContextType | null>(null);
 
 export function GradeProvider({ children }: { children: React.ReactNode }) {
 
-  // Load từ LocalStorage khi khởi tạo
   const [grade, setGrade] = useState<GradeLevel[]>([]);
+  const {token} = useAuth();
 
   // Hàm gọi API load danh sách khối
   const fetchGrades = async () => {
@@ -41,8 +42,10 @@ export function GradeProvider({ children }: { children: React.ReactNode }) {
 
   // Gọi API ngay khi mở trang
   useEffect(() => {
+    if (token) {
     fetchGrades();
-  }, []);
+    }
+  }, [token]);
 
 
   // Nếu grade thay đổi do update thủ công => sync lại LocalStorage

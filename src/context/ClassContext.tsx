@@ -1,18 +1,22 @@
 import { createContext, useContext, useState, useEffect} from "react";
+import {getClassApi} from "../api/classApi";
+import {useAuth} from "../context/authContext"
 
 interface Class {
     id: number;
+    code: string;
     name: string;
-    gradeID: number | null; // liên kết đến Grade Context
-    // studentCount: number;
-    schoolYearID: number | null; // liên kết đến School Year Context
-    teacherID: number | null;
+    schoolYear: string;
+    homeroomTeacherId: string;
+    gradeId: string;
+    studentCount: string;
 }
 
 
 interface ClassContextType {
     classes: Class[];
     setClasses: React.Dispatch<React.SetStateAction<Class[]>>;
+    fetchClasses: () => Promise<void>;
 }
 
 
@@ -21,44 +25,34 @@ export const ClassContext = createContext<ClassContextType | null>(null);
 
 export function ClassProvider({ children }: { children: React.ReactNode }) {
   
-  const [classes, setClasses] = useState<Class[]>(() => {
-    const saved = localStorage.getItem("classes");
-    return saved
-      ? JSON.parse(saved)
-      : [
-          {
-            id: 1,
-            name: "06A",
-            gradeID: 1,       // Khối 06
-            // studentCount: 44,
-            schoolYearID: 1,
-            teacherID: 1
-          },
-          {
-            id: 2,
-            name: "07A",
-            gradeID: 2,       // Khối 07
-            // studentCount: 41,
-            schoolYearID: 2,
-            teacherID: 2
-          },
-          {
-            id: 3,
-            name: "07B",
-            gradeID: 2,
-            // studentCount: 47,
-            schoolYearID: 1,
-            teacherID: 1
-          }
-        ];
-  });
+  const [classes, setClasses] = useState<Class[]>([]);
+  const {token} = useAuth();
+
+  // Hàm gọi danh sách lớp
+  const fetchClasses = async () => {
+    try {
+    const response = await getClassApi();
+    const classList = response.data
+
+    setClasses(classList)
+  } catch(err) {
+    throw err
+  }
+  }
+
+  // Gọi API khi mở trang
+  useEffect(() => {
+    if (token) {
+    fetchClasses();
+    }
+  },[token])
 
   useEffect(() => {
     localStorage.setItem("classes", JSON.stringify(classes));
   }, [classes]);
 
   return (
-    <ClassContext.Provider value={{ classes, setClasses }}>
+    <ClassContext.Provider value={{ classes, setClasses, fetchClasses }}>
       {children}
     </ClassContext.Provider>
   );

@@ -6,6 +6,8 @@ import { useSchoolYear } from "../context/SchoolYearContext";
 import { useClass } from "../context/ClassContext";
 import { useStudent } from "../context/StudentContext";
 import type { Student } from "../context/StudentContext"
+import {getStudentApi, createStudentApi, deleteOneStudentApi, deleteMultipleStudentsApi, updateStudentApi} from "../api/studentApi"
+
 
 const { Title, Text } = Typography;
 
@@ -14,72 +16,184 @@ type ContextType = { setPageTitle: (title: string) => void };
 
 function StudentManagement() {
 
+    /*
+    1. CONTEXT/PROVIDER
+    */
     const { setPageTitle } = useOutletContext<ContextType>()
     const { grade } = useGrade();
     const { classes } = useClass();
-    const { schoolYears } = useSchoolYear();
+    const { schoolYear } = useSchoolYear();
     const { students, setStudents } = useStudent();
 
     const [searchParams] = useSearchParams();
     const classIDFromURL = searchParams.get("classID");
 
-    useEffect(() => {
-        if (!classIDFromURL) return;
-
-        const id = Number(classIDFromURL);
-        const cls = classes.find(c => c.id === id);
-        if (!cls) return;
-
-        // set đúng bộ lọc theo lớp được click
-        setActiveYear(cls.schoolYearID);
-        setActiveGrade(cls.gradeID);
-        setSelectedClass(cls.id);
-    }, [classIDFromURL, classes]);
-
-
-
-
-    // Hiển thị tiêu đề trang
+    /* 
+    2.  PAGE TITLE
+    */
     useEffect(() => {
         setPageTitle("Quản lý học sinh");
     }, [setPageTitle]);
 
+    /*
+    3. READ CLASS FROM URL
+    */
 
+    // useEffect(() => {
+    //     if (!classIDFromURL) return;
+
+    //     const id = Number(classIDFromURL);
+    //     const cls = classes.find(c => c.id === id);
+    //     if (!cls) return;
+
+    //     // set đúng bộ lọc theo lớp được click
+    //     setActiveYear(cls.schoolYear);
+    //     setActiveGrade(cls.gradeId);
+    //     setSelectedClass(cls.id);
+    // }, [classIDFromURL, classes]);
+
+
+    /*
+    4. STATE- FILTER AND SELECTION
+    */
+    const [activeGrade, setActiveGrade] = useState<string | null>(null);
+    const [activeYear, setActiveYear] = useState<string | null>(null);
+    const [selectedClass, setSelectedClass] = useState<string | null>(null);
+    const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+    const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
+
+      /*
+    5. STATE- MODAL 
+    */
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+    
+
+    /*
+    6. STATE - ADD STUDENT + UPDATE STUDENT FORM
+    */
     // State để thêm lưu các dữ liệu học sinh mới
     const [newStudentName, setNewStudentName] = useState("");
-    // const [newStudentCode, setNewStudentCode] = useState("");
-    const [newStudentSchoolYear, setNewStudentSchoolYear] = useState<number | null>(null);
-    const [activeGradeInModal, setActiveGradeInModal] = useState<number | null>(null);
-    const [newStudentClass, setNewStudentClass] = useState<number | null>(null);
+    const [newStudentSchoolYear, setNewStudentSchoolYear] = useState<string | null>(null);
+    const [activeGradeInModal, setActiveGradeInModal] = useState<string | null>(null);
+    const [newStudentClass, setNewStudentClass] = useState<string | null>(null);
     const [newStudentDiscounts, setNewStudentDiscounts] = useState<string[]>([]);
     const [newParentName, setNewParentName] = useState("");
     const [newParentPhone, setNewParentPhone] = useState("");
     const [newParentEmail, setNewParentEmail] = useState("");
 
+     // State để chỉnh sửa thông tin học sinh
+    const [editSchool, setEditSchool] = useState<string>("");
+    const [editStudentCode, setEditStudentCode] = useState<string>("");
+    const [editSchoolYearName, setEditSchoolYearName] = useState<string>("");
+    const [editGradeName, setEditGradeName] = useState<string>("");
+    const [editStudentName, setEditStudentName] = useState<string>("");
+    const [editClassID, setEditClassID] = useState<string>("");
+    const [editClassName, setEditClassName] = useState<string>("");
+    const [editParentName, setEditParentName] = useState<string>("");
+    const [editParentPhone, setEditParentPhone] = useState<string>("");
+    const [editParentEmail, setEditParentEmail] = useState<string>("");
+    const [editDiscounts, setEditDiscounts] = useState<string[]>([]);
 
 
+    // hàm thêm học sinh
+    const handleAddStudent = async () => {
+        if(!newStudentName.trim() || !newStudentSchoolYear?.trim() || !activeGradeInModal?.trim() || !newStudentClass?.trim()) return;
+        try {
+            const generatedCode = `CLIENT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+            const dateOfBirth = new Date().toISOString().split("T")[0];
+            await createStudentApi(
+                generatedCode, newStudentName, newParentName, newParentPhone, dateOfBirth, newStudentDiscounts, newStudentClass
+            );
+
+            const listResponse = await getStudentApi();
+
+            const sortedListResponse = [...listResponse.data].sort(
+                (a,b) => 
+                    new Date(a.createdAt).getTime() -
+                    new Date(b.createdAt).getTime()
+            );
+
+            setStudents(sortedListResponse);
 
 
+            // Reset form
+            setNewStudentName("");
+            setActiveGradeInModal("");
+            setNewStudentSchoolYear(null);
+            setNewStudentClass(null);
+            setNewParentName("");
+            setNewParentPhone("");
+            setNewStudentDiscounts([]);
 
+            setIsAddModalOpen(false);
+        }
+        catch (err) {
+            console.log("Lỗi tạo học sinh",err)
+        }
+    }
 
-    const [activeGrade, setActiveGrade] = useState<number | null>(null);
-    const [activeYear, setActiveYear] = useState<number | null>(null);
+    // Hàm xóa học sinh
+    const handleDeleteStudents = async () => {
+        if (selectedRowKeys.length === 0) return;
 
+        const ids = selectedRowKeys.map(String);
 
+        try {
+            if (ids.length === 1) {
+                await deleteOneStudentApi(ids[0]);
+            } else {
+                await deleteMultipleStudentsApi(ids);
+            }
 
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-    const [selectedClass, setSelectedClass] = useState<number | null>(null);
-    const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+            setStudents(prev => prev.filter(s => !ids.includes(s.id)))
+            setSelectedRowKeys([])
+        }
+        catch (err) {
+            console.log("Lỗi xóa học sinh", err)
+        }
+    } 
 
+    // hàm chỉnh sửa học sinh
+    const handleUpdateStudent = async () => {
+        if (!currentStudent) return;
 
-    // Trạng thái lưu học sinh đang được click
-    const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
+        try {
+            const response = await updateStudentApi(
+                currentStudent.id,
+                editStudentCode || currentStudent.code,
+                editStudentName || currentStudent.name,
+                editParentName || currentStudent.parentName,
+                editParentPhone || currentStudent.parentPhoneNumber,
+                currentStudent.dateOfBirth,
+                editDiscounts?.length? editDiscounts : currentStudent.feeReductionTypes,
+                editClassID || currentStudent.class.id
+            );
+        
+        setStudents(prev =>
+            prev.map(s =>
+                s.id === currentStudent.id? response.data: s
+            )
+        )
+        
+        setIsUpdateModalOpen(false);
 
-    const currentClass = classes?.find(c => c.id === currentStudent?.classID);
+        } catch(err) {
+            console.log("Lỗi cập nhật học sinh", err);
+        }
+    }
 
-    const currentSchoolYear = schoolYears?.find(y => y.id === currentStudent?.schoolYearID);
+    // Đồng bộ currentStudent với dữ liệu mới nhất trong students mỗi khi danh sách sinh viên thay đổi
+    //để sinh viên đang được chọn luôn hiển thị thông tin cập nhật.
+    useEffect(() => {
+    if (!currentStudent) return;
+
+    const updated = students.find(s => s.id === currentStudent.id);
+    if (updated) {
+        setCurrentStudent(updated);
+    }
+    }, [students]);
 
 
     const rowSelection = {
@@ -97,48 +211,32 @@ function StudentManagement() {
     ];
 
 
-
-    // Hàm chỉnh màu cho từng loại discount 
-    const getDiscountColor = (type: string) => {
-        switch (type) {
-            case "Vùng sâu vùng xa":
-                return "#FF8156"
-            case "Con thương binh":
-                return "#9667EF"
-            case "Miễn học phí":
-                return "#3A70E2"
-        }
-    }
-
+    /*
+    DATA FILTERING
+    */
     // Lọc lớp theo khối + niên khóa
     const filteredClasses = classes.filter(cls => {
-        const matchGrade = activeGrade ? cls.gradeID === activeGrade : true;
-        const matchYear = activeYear ? cls.schoolYearID === activeYear : true;
+        const matchGrade = activeGrade ? cls.gradeId === activeGrade : true;
+        const matchYear = activeYear ? cls.schoolYear === activeYear : true;
         return matchGrade && matchYear;
     }
     )
 
-    // Lọc lớp theo khối + niên khóa trong model
+    // Lọc lớp theo khối + niên khóa trong modal
     const filteredClassesForAddModal = classes.filter(cls => {
-        const matchGrade = activeGradeInModal ? cls.gradeID === activeGradeInModal : false;
-        const matchYear = newStudentSchoolYear ? cls.schoolYearID === newStudentSchoolYear : false;
+        const matchGrade = activeGradeInModal ? cls.gradeId === activeGradeInModal : false;
+        const matchYear = newStudentSchoolYear ? cls.schoolYear === newStudentSchoolYear : false;
         return matchGrade && matchYear;
     });
 
-
-
-
-
-
-
-
-
     // Lọc học sinh theo lớp
-    const filteredStudents = selectedClass ? students.filter(s => s.classID === selectedClass) : [];
+    const filteredStudents = selectedClass ? students.filter(s => s.class.id === selectedClass) : [];
 
 
 
-    // Reset lớp được chọn mỗi khi đổi khối hoặc năm
+    /*
+    EFFECT - RESET FILTER LOGIC
+    */
     useEffect(() => {
         if (classIDFromURL) return;
         setSelectedClass(null);
@@ -151,165 +249,79 @@ function StudentManagement() {
     }, [activeYear]);
 
 
-    // hàm thêm học sinh
-    const handleAddStudent = () => {
-        // nếu thiếu dữ liệu bắt buộc thì return
-        if (!newStudentName || !newStudentSchoolYear || !activeGradeInModal || !newStudentClass) return;
-        if (!filteredClassesForAddModal.find(cls => cls.id === newStudentClass)) return;
-
-        setStudents((prev) => {
-            // Lấy mã cuối cùng
-            const lastCode = prev.length ? prev[prev.length - 1].studentCode : null;
-
-            // Tạo mã mới
-            const newStudentCode = lastCode
-                ? "KH0X" + (parseInt(lastCode.slice(4)) + 1).toString().padStart(8, "0")
-                : "KH0X91021020";
-
-            const newStudent = {
-                id: prev.length ? prev[prev.length - 1].id + 1 : 1,
-                fullName: newStudentName,
-                studentCode: newStudentCode,
-                school: "TPHP TP. Hồ Chí Minh",
-                schoolYearID: newStudentSchoolYear,
-                gradeID: activeGradeInModal,
-                classID: newStudentClass,
-                discounts: newStudentDiscounts ?? [],
-                parent: {
-                    fullName: newParentName ?? "",
-                    phone: newParentPhone ?? "",
-                    email: newParentEmail ?? ""
-                }
-            };
-
-            return [...prev, newStudent];
-        });
-
-        // reset form
-        setNewStudentName("");
-        // setNewStudentCode("");
-        setNewStudentSchoolYear(null);
-        setActiveGradeInModal(null);
-        setNewStudentClass(null);
-        setNewStudentDiscounts([]);
-
-        setNewParentName("");
-        setNewParentPhone("");
-        setNewParentEmail("");
-
-        // đóng modal
-        setIsAddModalOpen(false);
-    }
-
-
-    // State để chỉnh sửa thông tin học sinh
-    const [editSchool, setEditSchool] = useState<string>("");
-    const [editStudentCode, setEditStudentCode] = useState<string>("");
-    const [editSchoolYearName, setEditSchoolYearName] = useState<string>("");
-    const [editGradeName, setEditGradeName] = useState<string>("");
-    const [editStudentName, setEditStudentName] = useState<string>("");
-    const [editClass, setEditClass] = useState<number | null>(null);
-    const [editParentName, setEditParentName] = useState<string>("");
-    const [editParentPhone, setEditParentPhone] = useState<string>("");
-    const [editParentEmail, setEditParentEmail] = useState<string>("");
-    const [editDiscounts, setEditDiscounts] = useState<string[]>([]);
-
-
-
-    useEffect(() => {
-        if (isUpdateModalOpen && currentStudent) {
-            setEditSchool(currentStudent.school ?? "");
-            setEditStudentCode(currentStudent.studentCode ?? "");
-            setEditSchoolYearName(
-                schoolYears.find(sy => sy.id === currentStudent.schoolYearID)?.year ?? ""
-            );
-            setEditGradeName(
-                grade.find(g => g.id === currentStudent.gradeID)?.name ?? ""
-            );
-            setEditStudentName(currentStudent.fullName ?? "");
-            setEditClass(null);
-            setEditParentName(currentStudent.parent?.fullName ?? "");
-            setEditParentPhone(currentStudent.parent?.phone ?? "");
-            setEditParentEmail(currentStudent.parent?.email ?? "");
-            setEditDiscounts(currentStudent.discounts ?? []);
-        }
-    }, [isUpdateModalOpen, currentStudent, grade, schoolYears]);
-
 
     // Hàm cập nhật thông tin học sinh
-    const handleUpdateStudent = () => {
-        if (!currentStudent) return;
+    // const handleUpdateStudent = () => {
+    //     if (!currentStudent) return;
 
-        // tìm id tương ứng từ tên
-        const foundGrade = grade.find(g => g.name?.trim().toLowerCase() === editGradeName.trim().toLowerCase());
-        const foundSchoolYear = schoolYears.find(sy => sy.year?.trim().toLowerCase() === editSchoolYearName.trim().toLowerCase());
+    //     // tìm id tương ứng từ tên
+    //     const foundGrade = grade.find(g => g.name?.trim().toLowerCase() === editGradeName.trim().toLowerCase());
+    //     const foundSchoolYear = schoolYears.find(sy => sy.year?.trim().toLowerCase() === editSchoolYearName.trim().toLowerCase());
 
-        if (!foundGrade) {
-            return;
-        }
+    //     if (!foundGrade) {
+    //         return;
+    //     }
 
-        if (!foundSchoolYear) {
-            return;
-        }
+    //     if (!foundSchoolYear) {
+    //         return;
+    //     }
 
-        setStudents(prev => {
-            const updatedStudents = prev.map(stu =>
-                stu.id === currentStudent.id
-                    ? {
-                        ...stu,
-                        fullName: editStudentName || stu.fullName,
-                        studentCode: editStudentCode || stu.studentCode,
-                        school: editSchool || stu.school,
-                        schoolYearID: foundSchoolYear.id,
-                        gradeID: foundGrade.id,
-                        classID: editClass ?? stu.classID,
-                        discounts: editDiscounts ?? [],
-                        parent: {
-                            fullName: editParentName ?? "",
-                            phone: editParentPhone ?? "",
-                            email: editParentEmail ?? ""
-                        }
-                    }
-                    : stu
-            );
+    //     setStudents(prev => {
+    //         const updatedStudents = prev.map(stu =>
+    //             stu.id === currentStudent.id
+    //                 ? {
+    //                     ...stu,
+    //                     fullName: editStudentName || stu.fullName,
+    //                     studentCode: editStudentCode || stu.studentCode,
+    //                     school: editSchool || stu.school,
+    //                     schoolYearID: foundSchoolYear.id,
+    //                     gradeID: foundGrade.id,
+    //                     classID: editClass ?? stu.classID,
+    //                     discounts: editDiscounts ?? [],
+    //                     parent: {
+    //                         fullName: editParentName ?? "",
+    //                         phone: editParentPhone ?? "",
+    //                         email: editParentEmail ?? ""
+    //                     }
+    //                 }
+    //                 : stu
+    //         );
 
-            // Cập nhật luôn currentStudent để modal hiển thị liền
-            const updatedCurrent = updatedStudents.find(stu => stu.id === currentStudent.id) ?? null;
-            setCurrentStudent(updatedCurrent);
+    //         // Cập nhật luôn currentStudent để modal hiển thị liền
+    //         const updatedCurrent = updatedStudents.find(stu => stu.id === currentStudent.id) ?? null;
+    //         setCurrentStudent(updatedCurrent);
 
-            return updatedStudents;
-        });
+    //         return updatedStudents;
+    //     });
 
-        setIsUpdateModalOpen(false);
-    };
+    //     setIsUpdateModalOpen(false);
+    // };
 
 
 
     // 1. Luôn default array
     const safeClasses = classes ?? [];
     const safeGrades = grade ?? [];
-    const safeSchoolYears = schoolYears ?? [];
+    const safeSchoolYears = schoolYear ?? [];
 
     // 2. Chuyển editGradeName / editSchoolYearName thành string an toàn
     const safeEditGradeName = editGradeName ?? "";
     const safeEditSchoolYearName = editSchoolYearName ?? "";
 
     // 3. Lọc lớp cho modal edit
-    const filteredClassesForEditModal = safeClasses.filter(cls => {
-        const gradeObj = safeGrades.find(
-            g => (g.name ?? "").trim().toLowerCase() === safeEditGradeName.trim().toLowerCase()
-        );
-        const yearObj = safeSchoolYears.find(
-            sy => (sy.year ?? "").trim().toLowerCase() === safeEditSchoolYearName.trim().toLowerCase()
-        );
+    // const filteredClassesForEditModal = safeClasses.filter(cls => {
+    //     const gradeObj = safeGrades.find(
+    //         g => (g.name ?? "").trim().toLowerCase() === safeEditGradeName.trim().toLowerCase()
+    //     );
+    //     const yearObj = safeSchoolYears.find(
+    //         sy => (sy.year ?? "").trim().toLowerCase() === safeEditSchoolYearName.trim().toLowerCase()
+    //     );
 
-        const matchGrade = gradeObj ? cls.gradeID === gradeObj.id : false;
-        const matchYear = yearObj ? cls.schoolYearID === yearObj.id : false;
+    //     const matchGrade = gradeObj ? cls.gradeID === gradeObj.id : false;
+    //     const matchYear = yearObj ? cls.schoolYearID === yearObj.id : false;
 
-        return matchGrade && matchYear;
-    });
-
-
+    //     return matchGrade && matchYear;
+    // });
 
 
 
@@ -324,6 +336,22 @@ function StudentManagement() {
 
 
 
+
+    /*
+    TABLE CONFIG
+    */
+   
+    // Hàm chỉnh màu cho từng loại discount 
+    const getDiscountColor = (type: string) => {
+        switch (type) {
+            case "Vùng sâu vùng xa":
+                return "#FF8156"
+            case "Con thương binh":
+                return "#9667EF"
+            case "Miễn học phí":
+                return "#3A70E2"
+        }
+    }
 
 
     // Nội dung từng cột table
@@ -335,9 +363,12 @@ function StudentManagement() {
             ),
             key: "order",
             width: "8%",
-            render: (_: any, __: any, index: number) => (
-                <span style={{ fontWeight: 400, fontSize: "14px", color: "#475569" }}>{(index + 1).toString().padStart(2, "0")}</span>
+            render: (_: any, __: any, index: number) => { 
+                const order = (currentPage - 1) * dataSize + index + 1;
+                return (
+                <span style={{ fontWeight: 400, fontSize: "14px", color: "#475569" }}>{order.toString().padStart(2, "0")}</span>
             )
+        }
         },
 
         {
@@ -356,7 +387,7 @@ function StudentManagement() {
                         setIsViewModalOpen(true);
                     }}
                 >
-                    {record.fullName}
+                    {record.name}
                 </span>
             )
         },
@@ -369,7 +400,7 @@ function StudentManagement() {
             width: "63%",
             render: (_: any, record: Student) => (
                 <div style={{ display: "flex", gap: "14px" }}>
-                    {record.discounts.length === 0 ? (
+                    {record.feeReductionTypes.length === 0 ? (
                         <span
                             style={{
                                 padding: "1px 6px",
@@ -384,7 +415,7 @@ function StudentManagement() {
                             Không có
                         </span>
                     ) : (
-                        record.discounts.map((discount, index) => (
+                        record.feeReductionTypes.map((discount, index) => (
                             <span
                                 key={index}
                                 style={{
@@ -407,18 +438,27 @@ function StudentManagement() {
         }
     ]
 
-    // Tạo state cho phân trang
+    /*
+    STATE - PAGINATION
+    */
     const [currentPage, setCurrentPage] = useState(1);
-    const [dataSize, setDataSize] = useState(15);
+    const [dataSize, setDataSize] = useState(3);
     const [goToPage, setGoToPage] = useState<number | null>(null);
 
     // Tính toán các giá trị phân trang
-    const total = filteredStudents.length;
+    // const total = students.length;
+    const dataSource = filteredStudents;
+    const total = dataSource.length;
+
     const start = total === 0 ? 0 : (currentPage - 1) * dataSize + 1;
     const end = Math.min(currentPage * dataSize, total);
 
     // Tách dữ liệu hiển thị theo trang
-    const paginatedStudents = filteredStudents.slice((currentPage - 1) * dataSize, currentPage * dataSize);
+    const paginatedStudents = dataSource.slice(
+        (currentPage - 1) * dataSize,
+        currentPage * dataSize
+    )
+
 
     // Hàm chuyển trang
     const handlePageChange = (page: number) => {
@@ -434,21 +474,26 @@ function StudentManagement() {
                 setCurrentPage(1); // về trang 1 khi thay đổi kích thước trang
             }}
             items={[
-                { key: "10", label: "15 dữ liệu / trang" },
-                { key: "20", label: "30 dữ liệu / trang" },
+                { key: "3", label: "3 dữ liệu / trang" },
+                { key: "20", label: "20 dữ liệu / trang" },
                 { key: "50", label: "50 dữ liệu / trang" },
             ]}
         />
     );
 
+
+    /*
+    EFFECT - PAGINATION AND SELECTION SYNC
+    */
+
     // Reset selectedRowKeys nếu học sinh đã bị xóa hoặc thay trang
     useEffect(() => {
         // loại bỏ các selected key không còn tồn tại trong filteredStudents
-        const validKeys = selectedRowKeys.filter(k => filteredStudents.some(s => s.id === k));
+        const validKeys = selectedRowKeys.filter(k => students.some(s => s.id === k));
         if (validKeys.length !== selectedRowKeys.length) {
             setSelectedRowKeys(validKeys);
         }
-    }, [filteredStudents]); // chạy khi filteredStudents thay đổi (thay lớp/khối/niên khóa)
+    }, [students]); // chạy khi filteredStudents thay đổi (thay lớp/khối/niên khóa)
 
 
     useEffect(() => {
@@ -626,7 +671,7 @@ function StudentManagement() {
                                             <Text style={{ marginLeft: "5px", fontWeight: 500, fontSize: "14px", color: "#94A3B8" }}>
                                                 (
                                                 {
-                                                    schoolYears.find((y) => y.id === cls.schoolYearID)?.year
+                                                    cls.schoolYear
                                                 }
                                                 )
                                             </Text>
@@ -645,15 +690,16 @@ function StudentManagement() {
                             <Text style={{ margin: 0, padding: "9px 12px", fontWeight: 400, fontSize: "12px", color: "#94A3B8" }}>Niên khóa</Text>
 
                             {/* Hiển thị niên khóa và sắp xếp theo thứ tự giảm dần */}
-                            {[...schoolYears]
-                                .sort((a, b) => {
-                                    const startA = Number(a.year.split(" - ")[0]);
-                                    const startB = Number(b.year.split(" - ")[0]);
-                                    return startB - startA
-                                }).map((year) => (
+                            {
+                                // .sort((a, b) => {
+                                //     const startA = Number(a.split(" - ")[0]);
+                                //     const startB = Number(b.year.split(" - ")[0]);
+                                //     return startB - startA
+                                // })
+                                schoolYear.map((year) => (
                                     <div
-                                        key={year.id}
-                                        onClick={() => setActiveYear(activeYear === year.id? null : year.id)}
+                                        key={year}
+                                        onClick={() => setActiveYear(activeYear === year? null : year)}
                                         style={{
                                             cursor: "pointer",
                                             height: "36px",
@@ -667,16 +713,16 @@ function StudentManagement() {
                                             width: "100%",
                                             height: "100%",
                                             borderRadius: "8px",
-                                            backgroundColor: activeYear === year.id ? "#f2f9ff" : "#FFFFFF",
+                                            backgroundColor: activeYear === year ? "#f2f9ff" : "#FFFFFF",
                                         }}>
                                             <Text
                                                 style={{
                                                     fontWeight: 400,
                                                     fontSize: "14px",
-                                                    color: activeYear === year.id ? "#008AFF" : "#334155"
+                                                    color: activeYear === year ? "#008AFF" : "#334155"
                                                 }}
                                             >
-                                                {year.year.replaceAll(' ', '')}
+                                                {year.replaceAll(' ', '')}
                                             </Text>
                                         </div>
                                     </div>
@@ -706,10 +752,7 @@ function StudentManagement() {
                                     <Button
                                         danger
                                         disabled={selectedRowKeys.length === 0}
-                                        onClick={() => {
-                                            setStudents(prev => prev.filter(s => !selectedRowKeys.includes(s.id)));
-                                            setSelectedRowKeys([]);
-                                        }}
+                                        onClick={handleDeleteStudents}
                                         style={{ width: "106px", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", backgroundColor: "#FEF2F2", borderRadius: "8px", padding: "8px", gap: "4px", outline: "none", border: "none" }}>
                                         <img style={{ width: "15px", height: "15px", objectFit: "contain" }} src="/src/assets/Delete (1).png" />
                                         <Text style={{ fontWeight: 500, fontSize: "16px", color: "#F5222D" }}>Xóa</Text>
@@ -820,6 +863,9 @@ function StudentManagement() {
                 footer={null}
                 width={400}
                 closeIcon={null}
+                style={{
+                    top: 0, marginRight: 0
+                }}
             >
                 {/* Thanh tiêu đề thêm học sinh */}
                 <div
@@ -909,9 +955,9 @@ function StudentManagement() {
                                 value={newStudentSchoolYear}
                                 onChange={(value) => setNewStudentSchoolYear(value)}
                                 options={
-                                    schoolYears.map(item => ({
-                                        label: item.year,
-                                        value: item.id
+                                    schoolYear.map(year => ({
+                                        label: year,
+                                        value: year
                                     }))
                                 }
                                 suffixIcon={
@@ -922,11 +968,17 @@ function StudentManagement() {
 
                             {/* Chọn lựa khối */}
                             <div
+                            style={{
+                                overflow: "hidden"
+                            }}
+                            >
+                            <div
                                 style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "repeat(4,1fr)",
+                                    display: "flex",
                                     gap: "12px",
+                                    overflowX: "auto" as const
                                 }}
+                                className="grade-select-in-modal"
                             >
                                 {grade.map((g) => (
                                     <Button
@@ -963,18 +1015,19 @@ function StudentManagement() {
                                     </Button>
                                 ))}
                             </div>
+                            </div>
 
                             {/* Chọn lớp */}
                             <Select
                                 placeholder="Chọn lớp"
-                                value={newStudentClass ?? undefined}
+                                value={newStudentClass}
                                 onChange={(value) => setNewStudentClass(value)}
-                                disabled={!activeGradeInModal || !newStudentSchoolYear}
+                                // disabled={!activeGradeInModal || !newStudentSchoolYear}
                                 style={{ margin: "8px 0 20px" }}
                                 options={
-                                    filteredClassesForAddModal.map(item => ({
-                                        label: item.name,
-                                        value: item.id
+                                    filteredClassesForAddModal.map(cls => ({
+                                        label: cls.name,
+                                        value: cls.id
                                     }))
                                 }
                                 suffixIcon={
@@ -1120,6 +1173,9 @@ function StudentManagement() {
                 footer={null}
                 width={400}
                 closeIcon={null}
+                style={{
+                    top: 0, marginRight: 0
+                }}
             >
                 {/* Thanh tiêu đề xem thông tin học sinh */}
                 <div
@@ -1189,7 +1245,7 @@ function StudentManagement() {
                                     </td>
                                     <td style={{ padding: "13px 16px", borderBottom: "1px solid #f2f2f2" }}>
                                         <Text style={{ fontWeight: 400, fontSize: "14px", color: "#64748B" }}>
-                                            {currentStudent?.fullName || "—"}
+                                            {currentStudent?.name || "—"}
                                         </Text>
                                     </td>
                                 </tr>
@@ -1200,7 +1256,7 @@ function StudentManagement() {
                                     </td>
                                     <td style={{ padding: "13px 16px", borderBottom: "1px solid #f2f2f2" }}>
                                         <Text style={{ fontWeight: 400, fontSize: "14px", color: "#64748B" }}>
-                                            {currentStudent?.studentCode || "—"}
+                                            {currentStudent?.code || "—"}
                                         </Text>
                                     </td>
                                 </tr>
@@ -1211,12 +1267,12 @@ function StudentManagement() {
                                     </td>
                                     <td style={{ padding: "13px 16px" }}>
                                         <div style={{ display: "flex", gap: "8px" }}>
-                                            {currentStudent?.discounts?.length === 0 ? (
+                                            {currentStudent?.feeReductionTypes?.length === 0 ? (
                                                 <Text style={{ textAlign: "center", padding: "1px 6px", borderRadius: "8px", backgroundColor: "#94A3B8", color: "#FFF", fontSize: "12px" }}>
                                                     Không có
                                                 </Text>
                                             ) : (
-                                                currentStudent?.discounts?.map((discount, idx) => (
+                                                currentStudent?.feeReductionTypes?.map((discount, idx) => (
                                                     <Text
                                                         key={idx}
                                                         style={{
@@ -1253,34 +1309,34 @@ function StudentManagement() {
                         <table style={{ width: "100%", borderCollapse: "collapse" }}>
                             <tbody>
                                 <tr>
-                                    <td style={{ width: "35%", padding: "13px 16px", borderBottom: "1px solid #f2f2f2" }}>
+                                    <td style={{ width: "34%", padding: "13px 16px", borderBottom: "1px solid #f2f2f2" }}>
                                         <Text style={{ fontWeight: 500, fontSize: "14px", color: "#4B4B4B" }}>Trường</Text>
                                     </td>
                                     <td style={{ padding: "13px 16px", borderBottom: "1px solid #f2f2f2" }}>
                                         <Text style={{ fontWeight: 400, fontSize: "14px", color: "#64748B" }}>
-                                            {currentStudent?.school || "—"}
+                                            {currentStudent?.class?.school?.name}
                                         </Text>
                                     </td>
                                 </tr>
 
                                 <tr>
-                                    <td style={{ width: "35%", padding: "13px 16px", borderBottom: "1px solid #f2f2f2" }}>
+                                    <td style={{ width: "34%", padding: "13px 16px", borderBottom: "1px solid #f2f2f2" }}>
                                         <Text style={{ fontWeight: 500, fontSize: "14px", color: "#4B4B4B" }}>Niên khóa</Text>
                                     </td>
                                     <td style={{ padding: "13px 16px", borderBottom: "1px solid #f2f2f2" }}>
                                         <Text style={{ fontWeight: 400, fontSize: "14px", color: "#64748B" }}>
-                                            {currentSchoolYear?.year || "—"}
+                                            {currentStudent?.class?.schoolYear.replace("-"," - ")}
                                         </Text>
                                     </td>
                                 </tr>
 
                                 <tr>
-                                    <td style={{ width: "35%", padding: "13px 16px" }}>
+                                    <td style={{ width: "34%", padding: "13px 16px" }}>
                                         <Text style={{ fontWeight: 500, fontSize: "14px", color: "#4B4B4B" }}>Lớp</Text>
                                     </td>
                                     <td style={{ padding: "13px 16px" }}>
                                         <Text style={{ fontWeight: 400, fontSize: "14px", color: "#64748B" }}>
-                                            {currentClass?.name || "—"}
+                                            {currentStudent?.class?.name}
                                         </Text>
                                     </td>
                                 </tr>
@@ -1306,7 +1362,7 @@ function StudentManagement() {
                                     </td>
                                     <td style={{ padding: "13px 16px", borderBottom: "1px solid #f2f2f2" }}>
                                         <Text style={{ fontWeight: 400, fontSize: "14px", color: "#64748B" }}>
-                                            {currentStudent?.parent.fullName || "—"}
+                                            {currentStudent?.parentName || "—"}
                                         </Text>
                                     </td>
                                 </tr>
@@ -1317,7 +1373,7 @@ function StudentManagement() {
                                     </td>
                                     <td style={{ padding: "13px 16px", borderBottom: "1px solid #f2f2f2" }}>
                                         <Text style={{ fontWeight: 400, fontSize: "14px", color: "#64748B" }}>
-                                            {currentStudent?.parent.email || "—"}
+                                            {/* {currentStudent?.parent.email || "—"} */}
                                         </Text>
                                     </td>
                                 </tr>
@@ -1328,7 +1384,7 @@ function StudentManagement() {
                                     </td>
                                     <td style={{ padding: "13px 16px" }}>
                                         <Text style={{ fontWeight: 400, fontSize: "14px", color: "#64748B" }}>
-                                            {currentStudent?.parent.phone || "—"}
+                                            {currentStudent?.parentPhoneNumber || "—"}
                                         </Text>
                                     </td>
                                 </tr>
@@ -1357,6 +1413,21 @@ function StudentManagement() {
 
                         <Button
                             onClick={() => {
+                                const gradeName = grade.find(g => g.id === currentStudent?.class.gradeId)?.name;
+
+                                if (!currentStudent) return;
+                                
+                                setEditSchool(currentStudent?.class?.school?.name)
+                                setEditStudentCode(currentStudent.code)
+                                setEditSchoolYearName(currentStudent.class.schoolYear)
+                                setEditDiscounts(currentStudent.feeReductionTypes)
+                                setEditGradeName(gradeName || "");
+                                setEditStudentName(currentStudent.name)
+                                setEditClassName(currentStudent.class.name)
+                                setEditClassID(currentStudent.class.id)
+                                setEditParentName(currentStudent.parentName || "");
+                                setEditParentPhone(currentStudent.parentPhoneNumber || "");
+                                setEditParentEmail("");
                                 setIsUpdateModalOpen(true)
                             }}
                             style={{ flex: 1, outline: "none", height: "40px", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", borderRadius: "8px", backgroundColor: "#f2f9ff" }}>
@@ -1374,6 +1445,9 @@ function StudentManagement() {
                 footer={null}
                 width={400}
                 closeIcon={null}
+                style={{
+                    top: 0, marginRight: 0
+                }}
             >
                 <div
                     style={{
@@ -1444,7 +1518,7 @@ function StudentManagement() {
                                 </div>
                                 <Input
                                     value={editSchool}
-                                    onChange={(e) => setEditSchool(e.target.value)}
+                                    // onChange={(e) => setEditSchool(e.target.value)}
                                     style={{ borderRadius: "12px", padding: "7px 12px", flex: 1, backgroundColor: "#E2E8F0", color: "#CBD5E1", fontWeight: 400, fontSize: "16px" }}
                                     placeholder="TPHP TP.Hồ Chí Minh"
                                 />
@@ -1468,7 +1542,7 @@ function StudentManagement() {
                                 </div>
                                 <Input
                                     value={editSchoolYearName}
-                                    onChange={(e) => setEditSchoolYearName(e.target.value)}
+                                    // onChange={(e) => setEditSchoolYearName(e.target.value)}
                                     style={{ borderRadius: "12px", padding: "7px 12px", flex: 1, backgroundColor: "#E2E8F0", color: "#CBD5E1", fontWeight: 400, fontSize: "16px" }}
                                     placeholder="2012-2013"
                                 />
@@ -1480,7 +1554,7 @@ function StudentManagement() {
                                 </div>
                                 <Input
                                     value={editGradeName}
-                                    onChange={(e) => setEditGradeName(e.target.value)}
+                                    // onChange={(e) => setEditGradeName(e.target.value)}
                                     style={{ borderRadius: "12px", padding: "7px 12px", flex: 1, backgroundColor: "#E2E8F0", color: "#CBD5E1", fontWeight: 400, fontSize: "16px" }}
                                     placeholder="06"
                                 />
@@ -1495,12 +1569,11 @@ function StudentManagement() {
 
 
                             <Select
-                                value={editClass ?? undefined}
-                                disabled={!safeEditGradeName || !safeEditSchoolYearName}
-                                onChange={(value) => setEditClass(value)}
+                                value={editClassID}
+                                onChange={(value) => setEditClassID(value)}
                                 placeholder="Chọn lớp"
                                 options={
-                                    filteredClassesForEditModal.map(item => ({
+                                    classes.map(item => ({
                                         label: item.name,
                                         value: item.id
                                     }))
@@ -1600,9 +1673,9 @@ function StudentManagement() {
                         />
 
                         <Input
-                            placeholder="Email nhận hóa đơn điện tử"
+                            // placeholder="Email nhận hóa đơn điện tử"
                             value={editParentEmail}
-                            onChange={(e) => setEditParentEmail(e.target.value)}
+                            // onChange={(e) => setEditParentEmail(e.target.value)}
                             style={{
                                 padding: "8px 12px",
                                 height: "40px",
@@ -1620,7 +1693,9 @@ function StudentManagement() {
                         padding: "12px 18px"
                     }}
                 >
-                    <Button onClick={handleUpdateStudent} style={{ width: "100%", height: "40px", color: "#008AFF", backgroundColor: "#f2f9ff", fontWeight: 500, fontSize: "16px", outline: "none", borderRadius: "8px" }}>
+                    <Button 
+                    onClick={handleUpdateStudent} 
+                    style={{ width: "100%", height: "40px", color: "#008AFF", backgroundColor: "#f2f9ff", fontWeight: 500, fontSize: "16px", outline: "none", borderRadius: "8px" }}>
                         Cập nhật
                     </Button>
                 </div>
@@ -1697,6 +1772,11 @@ function StudentManagement() {
                 background: transparent !important
             }
 
+            .grade-select-in-modal::-webkit-scrollbar {
+                height: 0px !important;
+                background: transparent !important;
+            }
+
             .ant-pagination-item a {
           color: #64748B !important
           }
@@ -1725,6 +1805,8 @@ function StudentManagement() {
           body::-webkit-scrollbar {
             display: none;
          }
+
+        
 
 
             `

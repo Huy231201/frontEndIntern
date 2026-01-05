@@ -16,12 +16,11 @@ import ProtectedRoute from "./pages/ProtectedRoute";
 function App() {
   return (
     <BrowserRouter>
-    
+    <AuthProvider>
       <SchoolYearProvider>
         <GradeProvider>
           <ClassProvider>
             <StudentProvider>
-              <AuthProvider>
               <Routes>
                 {/* Trang đăng nhập */}
                 <Route path="/login" element={<Login />} />
@@ -37,11 +36,11 @@ function App() {
                   </Route>
                 </Route>
               </Routes>
-              </AuthProvider>
             </StudentProvider>
           </ClassProvider>
         </GradeProvider>
       </SchoolYearProvider>
+      </AuthProvider>
       
     </BrowserRouter>
   );

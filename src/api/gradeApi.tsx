@@ -1,95 +1,35 @@
 
-import axios from "axios";
+import axiosClient from "../api/axiosClient"
 
-const APIGRADE_URL = "https://api-dev.gotrust.vn/edupay/v1/grades";
+
 
 export const getGradeApi = async () => {
-    const token = localStorage.getItem("token");
-
-    try {
-        const response = await axios.get(APIGRADE_URL,
-            {
-                headers: {
-                    "accept": "text/plain",
-                    "x-api-version": "1.0",
-                    "Authorization": `Bearer ${token}` // Dùng token động
-                }
-            }
-        );
-
-        return response.data;
-    }
-
-    catch (error) {
-        throw error
-    }
-}
+    const response = await axiosClient.get("/grades");
+    return response.data;
+};
 
 
 // Gọi API thêm khối
 export const createGradeApi = async (name: string, code: string) => {
-    const token = localStorage.getItem("token");
-    try {
-        const response = await axios.post(APIGRADE_URL, {
-            name, code
-        },
-            {
-                headers: {
-                    "accept": "text/plain",
-                    "Content-Type": "application/json-patch+json",
-                    "x-api-version": "1.0",
-                    "Authorization": `Bearer ${token}`
-                }
-            }
-        );
 
-        return response.data;
-    } catch (err) {
-        throw err
-    }
+
+    const response = await axiosClient.post("/grades", {
+        name, code
+    });
+    return response.data;
 }
 
 // Gọi API xóa khối
 export const deleteGradeApi = async (id: string) => {
-    const token = localStorage.getItem("token");
-
-    try {
-        const response = await axios.delete(
-            `${APIGRADE_URL}/${id}`,
-            {
-                headers: {
-                    "accept": "text/plain",
-                    "x-api-version": "1.0",
-                    "Authorization": `Bearer ${token}`
-                }
-            }
-        );
-
-        return response.data;
-    } catch (err) {
-        throw err
-    }
+    const response = await axiosClient.delete(`/grades/${id}`);
+    return response.data;
 }
 
 // Gọi API chỉnh sửa thông tin khối
 export const updateGradeApi = async (id: string, name: string, code: string) => {
-    const token = localStorage.getItem("token");
+    const response = await axiosClient.put(`/grades/${id}`, {
+        name, code
+    });
+    return response.data;
 
-    try {
-        const response = await axios.put(
-            `${APIGRADE_URL}/${id}`, {
-            name, code
-        }, {
-            headers: {
-                "accept": "text/plain",
-                "Content-Type": "application/json-patch+json",
-                "x-api-version": "1.0",
-                "Authorization": `Bearer ${token}`
-            }
-        }
-        );
-        return response.data;
-    } catch (err) {
-        throw err
-    }
 }

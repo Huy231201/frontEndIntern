@@ -1,46 +1,50 @@
-import axios from "axios"
+import axiosClient from "./axiosClient";
 
-const APICLASS_URL = "https://api-dev.gotrust.vn/edupay/v1/classes"
-
-// Hàm lấy danh sách niên khóa 
-export const getSchoolYearApi = async () => {
-    const token = localStorage.getItem("token");
-    try {
-        const response = await axios.get(`${APICLASS_URL}/schoolYears`,
-            {
-                headers: {
-                    "accept": "text/plain",
-                    "x-api-version": "1.0",
-                    "Authorization": `Bearer ${token}`
-                }     
-            }
-
-        );
-        return response;
-    } catch(err) {
-        throw err
-    }
-}
-
-// Hàm lấy danh sách lớp
+// Lấy danh sách lớp
 export const getClassApi = async () => {
-    const token = localStorage.getItem("token");
-    try {
-        const response = await axios.get(APICLASS_URL,
-            {
-                headers: {
-                    "accept": "text/plain",
-                    "x-api-version": "1.0",
-                    "Authorization": `Bearer ${token}`
-                }     
-            }
+  const response = await axiosClient.get("/classes");
+  return response.data;
+};
 
-        );
-        return response.data;
-    } catch(err) {
-        throw err
-    }
-}
+// Tạo lớp
+export const createClassApi = async (
+  code: string,
+  name: string,
+  schoolYear: string,
+  homeroomTeacherId: string,
+  gradeId: string
+) => {
+  const response = await axiosClient.post("/classes", {
+    code,
+    name,
+    schoolYear,
+    homeroomTeacherId,
+    gradeId,
+  });
+  return response.data;
+};
 
+// Xóa lớp
+export const deleteClassApi = async (id: string) => {
+  const response = await axiosClient.delete(`/classes/${id}`);
+  return response.data;
+};
 
- 
+// Cập nhật lớp
+export const updateClassApi = async (
+  id: string,
+  code: string,
+  name: string,
+  schoolYear: string,
+  homeroomTeacherId: string,
+  gradeId: string
+) => {
+  const response = await axiosClient.put(`/classes/${id}`, {
+    code,
+    name,
+    schoolYear,
+    homeroomTeacherId,
+    gradeId,
+  });
+  return response.data;
+};
